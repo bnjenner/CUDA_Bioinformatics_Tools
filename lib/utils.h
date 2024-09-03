@@ -25,10 +25,18 @@ double* get_norm_vec(double *mat, const int &rows, const int &cols) {
     return norm_vec;
 }
 
-double print_matrix(double *mat, const int &size) {
+double print_matrix(double *mat, const int &rows, const int &cols) {
+    int tmp = 0;
     std::cout << std::setprecision(5);
-    for (int i = 0; i < size; i++) {
-        std::cout << mat[i] << " ";
+    // for (int i = 0; i < size; i++) {
+    //     std::cout << mat[i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            std::cout << mat[j * rows + i] << "\t";
+        }
+        std::cout << "\n";
     }
-    std::cout << std::endl;
 }
