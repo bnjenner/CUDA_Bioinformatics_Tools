@@ -26,10 +26,11 @@
 #include <getopt.h>
 
 void display_help(const char* program) {
-   std::cerr << "Usage: " << program << " -f filename\n"
+   std::cerr << "Description: cuda_PCA is a tool used for Principal Component Analysis utilizing GPU \n             computing through CUDA and its libraries. Current calculations are not batched,\n             so GPUs with smaller memory capacities will fail.\n             Resulting PC matrix is printed to standard out.\n\n"
+             << "Usage: " << program << " -f filename > output.txt\n\n"
              << "Options:\n"
              << "  -f filename       Specifies input file\n"
-             << "  -h                Displays help message"
+             << "  -h                Displays help message\n"
              << std::endl;
 }
 
