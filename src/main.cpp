@@ -23,13 +23,39 @@
 #include <stdexcept> 
 #include <cmath>
 #include <cassert>
+#include <getopt.h>
+
+void display_help(const char* program) {
+   std::cerr << "Usage: " << program << " -f filename\n"
+             << "Options:\n"
+             << "  -f filename       Specifies input file\n"
+             << "  -h                Displays help message"
+             << std::endl;
+}
+
+void argparse(int argc, char** argv, std::string &filename) {
+   int opt;
+   while ((opt = getopt(argc, argv, "hf:")) != -1) {
+      switch (opt) {
+         case 'f':
+            filename = optarg;
+            break;
+         case 'h':
+            display_help(argv[0]);
+            exit(EXIT_SUCCESS);
+         default:
+            display_help(argv[0]);
+            exit(EXIT_FAILURE);
+      }
+   }
+}
 
 void cuda_assert(cudaError_t status) {
    if (status != cudaSuccess) {
       std::cerr << "\n//CUDA_ERROR: "
                 << cudaGetErrorString(status) 
                 << ".\n";
-   throw std::runtime_error("\n//ERROR: Could not allocate GPU memory.\n");
+   exit(EXIT_FAILURE);
    }
 }
 
@@ -38,7 +64,18 @@ int main(int argc, char* argv[]) {
 
 	std::cerr << "//cuda_PCA\n";
 
-   std::string filename(argv[1]);
+   // Arguments
+   std::string filename;
+
+   argparse(argc, argv, filename);
+
+   if (filename.empty()) {
+      display_help(argv[0]);
+      std::cerr << "//ERROR: must include an input file.\n";
+      exit(EXIT_FAILURE);
+   }
+
+   // std::string filename(argv[1]);
    std::cerr << "//Parsing file: " << filename << "....";
 
    /////////////////////////////////////////////////////////////////
@@ -224,8 +261,9 @@ int main(int argc, char* argv[]) {
 
    double *transformed = (double*)malloc(bytes);
    cudaMemcpy(transformed, d_t_mat, sizeof(double) * size, cudaMemcpyDeviceToHost);
-   print_matrix(transformed, m, n);
-
+   output_matrix(transformed, m, n, table.row_names);
+   // print_matrix(transformed, m, n);
+  
    std::cerr << "//SUCCESS....Program completed successfully.\n";  
    return 0;
    }

@@ -28,15 +28,29 @@ double* get_norm_vec(double *mat, const int &rows, const int &cols) {
 double print_matrix(double *mat, const int &rows, const int &cols) {
     int tmp = 0;
     std::cout << std::setprecision(5);
-    // for (int i = 0; i < size; i++) {
-    //     std::cout << mat[i] << " ";
-    // }
-    // std::cout << std::endl;
-
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             std::cout << mat[j * rows + i] << "\t";
         }
         std::cout << "\n";
     }
+}
+
+
+double output_matrix(double *mat, const int &rows, const int &cols, const std::vector<std::string> &rownames) {
+     
+     for (int i = 1; i < cols + 1; i++) {
+        std::cout << "PC" << i << "\t";
+     }
+     std::cout << "\n";
+
+     for (int i = 0; i < rows; i++) {
+        std::cout << rownames.at(i) << "\t";
+        std::cout << std::setprecision(5); 
+        for (int j = 0; j < cols; j++) {
+            std::cout << mat[j * rows + i] << "\t";
+        }
+        std::cout << "\n";
+    }
+
 }
