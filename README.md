@@ -1,6 +1,6 @@
 # CUDA Bioinformatics Tools
 
-## IN DEVELOPMENT
+## IN DEVELOPMENT (kind of just for fun)
 
 A collection of commandline tools for common bioinfomatics analyses that utilizes GPU-computing.
 
