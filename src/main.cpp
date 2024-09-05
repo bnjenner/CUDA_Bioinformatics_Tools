@@ -26,7 +26,7 @@
 #include <getopt.h>
 
 void display_help(const char* program) {
-   std::cerr << "Description: cuda_PCA is a tool used for Principal Component Analysis utilizing GPU \n             computing through CUDA and its libraries. Current calculations are not batched,\n             so GPUs with smaller memory capacities will fail.\n             Resulting PC matrix is printed to standard out.\n\n"
+   std::cerr << "Description: cuda_PCA is a tool used for Principal Component Analysis utilizing GPU \n             computing through CUDA and its libraries. Current calculations are not batched,\n             so GPUs with smaller memory capacities will fail on larger datasets.\n             Resulting PC matrix is printed to standard out.\n\n"
              << "Usage: " << program << " -f filename > output.txt\n\n"
              << "Options:\n"
              << "  -f filename       Specifies input file\n"
@@ -88,11 +88,11 @@ int main(int argc, char* argv[]) {
    std::cerr << "COMPLETE\n";  
    // Get Dimensions and bytes
    //   column major order on the transposed matrix = the same matrix lol  
-   const int m = table.cols;
-   const int n = table.rows;
-   const int lda = m;
-   const int size = table.size;
-   const int cov_size = n * n;
+   const unsigned long long int m = table.cols;
+   const unsigned long long int n = table.rows;
+   const unsigned long long int lda = m;
+   const unsigned long long int size = table.size;
+   const unsigned long long int cov_size = n * n;
    const size_t bytes = size * sizeof(double);
    const size_t norm_vec_bytes = n * sizeof(double);
    const size_t one_vec_bytes = m * sizeof(double);    
@@ -104,6 +104,8 @@ int main(int argc, char* argv[]) {
    std::cerr << "    Cols: " << n << "\n";  
    std::cerr << "    Size: " << size << "\n"; 
    std::cerr << "    Bytes: " << bytes << "\n";  
+   std::cerr << "    Covariance Size: " << cov_size << "\n"; 
+   std::cerr << "    Covariance Bytes: " << cov_bytes << "\n";  
 
 
    /////////////////////////////////////////////////////////////////
