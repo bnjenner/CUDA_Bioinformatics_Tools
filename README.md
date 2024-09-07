@@ -13,7 +13,7 @@ Description: cuda_PCA is a tool used for Principal Component Analysis utilizing 
              so GPUs with smaller memory capacities will fail on larger datasets.
              Resulting PC matrix is printed to standard out.
 
-Usage: ./cuda_PCA -f filename > output.txt
+Usage: ./cuda_PCA [ -h help ] filename > output.txt
 
 Options:
   -f filename       Specifies input file
