@@ -27,19 +27,19 @@
 
 void display_help(const char* program) {
    std::cerr << "Description: cuda_PCA is a tool used for Principal Component Analysis utilizing GPU \n             computing through CUDA and its libraries. Current calculations are not batched,\n             so GPUs with smaller memory capacities will fail on larger datasets.\n             Resulting PC matrix is printed to standard out.\n\n"
-             << "Usage: " << program << " -f filename > output.txt\n\n"
+             << "Usage: " << program << " [ -h help ] filename > output.txt\n\n"
              << "Options:\n"
-             << "  -f filename       Specifies input file\n"
              << "  -h                Displays help message\n"
              << std::endl;
 }
 
 void argparse(int argc, char** argv, std::string &filename) {
    int opt;
-   while ((opt = getopt(argc, argv, "hf:")) != -1) {
+
+   while ((opt = getopt(argc, argv, "fh:")) != -1) {
       switch (opt) {
          case 'f':
-            filename = optarg;
+            // filename = optarg; placeholder
             break;
          case 'h':
             display_help(argv[0]);
@@ -49,6 +49,13 @@ void argparse(int argc, char** argv, std::string &filename) {
             exit(EXIT_FAILURE);
       }
    }
+
+   if (optind > argc) {
+      display_help(argv[0]);
+      exit(EXIT_FAILURE);
+   }
+
+   filename = argv[optind];
 }
 
 void cuda_assert(cudaError_t status) {
@@ -173,15 +180,6 @@ int main(int argc, char* argv[]) {
                                cent_d_mat, m);
    if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not center matrix.\n");}
 
-
-   //////////////////////////////////////////////////////////////////////////////////
-   // Free up memory for now
-   cudaFree(d_mat);
-   cudaFree(norm_d_mat);
-   cudaFree(d_norm);
-   cudaFree(d_one);
-   cudaDeviceSynchronize();
-
    ///////////////////////////////////////////////////////////////// 
    // Get Coveriance matrix
    alpha = 1.0f;
@@ -201,7 +199,17 @@ int main(int argc, char* argv[]) {
 
 
    //////////////////////////////////////////////////////////////////////////////////
+   // Free up memory
+   cudaDeviceSynchronize();
+   cudaFree(d_mat);
+   cudaFree(norm_d_mat);
+   cudaFree(d_norm);
+   cudaFree(d_one);
+
+
+   //////////////////////////////////////////////////////////////////////////////////
    // Singular Value Decomposition
+   //    This implementation is extremely slow on the GPU
    // https://docs.nvidia.com/cuda/cusolver/index.html#dense-eigenvalue-solver-reference-legacy
    // https://docs.nvidia.com/cuda/archive/9.1/cusolver/index.html#svd-example1
 
@@ -219,11 +227,11 @@ int main(int argc, char* argv[]) {
    int lwork = 0;
 
    // Allocate memory on GPU
-   cuda_error = cudaMalloc((void**)&d_S, n * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMalloc((void**)&d_U, cov_size * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMalloc((void**)&d_VT, cov_size * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMalloc((void**)&devInfo, sizeof(int)); cuda_assert(cuda_error); 
-   cuda_error = cudaMalloc((void**)&d_t_mat, size * sizeof(double)); cuda_assert(cuda_error); 
+   cuda_error = cudaMallocManaged((void**)&d_S, n * sizeof(double)); cuda_assert(cuda_error); 
+   cuda_error = cudaMallocManaged((void**)&d_U, cov_size * sizeof(double)); cuda_assert(cuda_error); 
+   cuda_error = cudaMallocManaged((void**)&d_VT, cov_size * sizeof(double)); cuda_assert(cuda_error); 
+   cuda_error = cudaMallocManaged((void**)&devInfo, sizeof(int)); cuda_assert(cuda_error); 
+   cuda_error = cudaMallocManaged((void**)&d_t_mat, size * sizeof(double)); cuda_assert(cuda_error); 
 
 
    ///////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +245,7 @@ int main(int argc, char* argv[]) {
 
    // Compute SVD
    signed char jobu = 'A'; // all m columns of U
-   signed char jobvt = 'A'; // all n columns of VT
+   signed char jobvt = 'N'; // all n columns of VT
    cusolver_status = cusolverDnDgesvd(cusolver_handle, jobu, jobvt,
                                       n, n, d_A,
                                       n, d_S, d_U,
@@ -264,8 +272,18 @@ int main(int argc, char* argv[]) {
 
    double *transformed = (double*)malloc(bytes);
    cudaMemcpy(transformed, d_t_mat, sizeof(double) * size, cudaMemcpyDeviceToHost);
-   output_matrix(transformed, m, n, table.row_names);
+   output_matrix(transformed, m, n, table.col_names);
    // print_matrix(transformed, m, n);
+
+   //////////////////////////////////////////////////////////////////////////////////
+   // Free up memory
+   cudaDeviceSynchronize();
+   cudaFree(d_A);
+   cudaFree(d_U);
+   cudaFree(d_S);
+   cudaFree(d_VT);
+   cudaFree(cent_d_mat);
+   cudaFree(d_t_mat);
   
    std::cerr << "//SUCCESS....Program completed successfully.\n";  
    return 0;
