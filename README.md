@@ -16,7 +16,6 @@ Description: cuda_PCA is a tool used for Principal Component Analysis utilizing 
 Usage: ./cuda_PCA [ -h help ] filename > output.txt
 
 Options:
-  -f filename       Specifies input file
   -h                Displays help message
 ```
 
