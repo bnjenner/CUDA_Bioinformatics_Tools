@@ -257,7 +257,7 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   // Get Coveriance matrix
+   // Projecting Centered Data onto PCs
    std::cerr << "//Transforming Data....";  
    alpha = 1.0f;
    beta = 0.0f;
@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
                                &alpha, cent_d_mat, lda,
                                d_U, n, &beta,
                                d_t_mat, m);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not calculate covariance matrix.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Projecting Centered Data onto PCs.\n");}
 
    std::cerr << "COMPLETE\n";  
 
