@@ -12,6 +12,9 @@
 #include "cublas_v2.h"
 #include "cusolverDn.h"
 
+// Armadillo
+#include <armadillo>
+
 // utils
 #include "tsv.h"
 #include "utils.h"
@@ -252,6 +255,18 @@ int main(int argc, char* argv[]) {
                                       n, d_VT, n,
                                       d_work, lwork, d_rwork, devInfo);
    if (cusolver_status != CUSOLVER_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not perform SVD.\n");}
+
+   /*
+   We should do this on the CPU using armadillo, it will be faster
+   
+   mat U;
+   vec s;
+   mat V;
+
+   svd(U,s,V,X);
+   */
+
+
 
    std::cerr << "COMPLETE\n";  
 
