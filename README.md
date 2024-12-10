@@ -4,6 +4,7 @@
 
 A collection of commandline tools for common bioinformatics analyses that utilizes GPU-computing.
 
+NOTE: Some steps in these algorithms are slow or not ideal on the GPU (SVD, etc.). Future iterations will likely perform these steps using the CPU.
 
 ### cuda_PCA
 
