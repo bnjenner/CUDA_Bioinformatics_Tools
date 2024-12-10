@@ -1,0 +1,7 @@
+weights
+sample_1	27.77921
+sample_2	27.77921
+sample_3	47.81749
+sample_4	300.43700
+sample_5	27.77921
+sample_6	122.54001

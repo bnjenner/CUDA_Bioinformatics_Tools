@@ -39,7 +39,7 @@ void display_help(const char* program) {
 void argparse(int argc, char** argv, std::string &filename) {
    int opt;
 
-   while ((opt = getopt(argc, argv, "fh:")) != -1) {
+   while ((opt = getopt(argc, argv, "fh")) != -1) {
       switch (opt) {
          case 'f':
             // filename = optarg; placeholder

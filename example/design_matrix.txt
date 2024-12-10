@@ -1,0 +1,7 @@
+treatment0	treatment1	timepoint1	timepoint2
+sample_1	1	0	0	0
+sample_2	1	0	1	0
+sample_3	0	1	0	0
+sample_4	0	1	1	0
+sample_5	1	0	0	1
+sample_6	0	1	0	1
