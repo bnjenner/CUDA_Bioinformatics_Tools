@@ -304,6 +304,18 @@ int main(int argc, char* argv[]) {
    }
    std::cout << "\n";
    print_matrix(result_matrix, y_m, n);
+
+
+   //////////////////////////////////////////////////////////////////////////////////
+   // Free up memory
+   cudaDeviceSynchronize();
+   cudaFree(d_mat);
+   cudaFree(d_w_mat);
+   cudaFree(d_y_mat);
+   cudaFree(d_w_y_mat);
+   cudaFree(d_id_mat);
+   cudaFree(d_t_mat);
+   cudaFree(d_res_mat);
   
    std::cerr << "//PROGRAM COMPLETED SUCCESSFULLY!\n";  
    return 0;
