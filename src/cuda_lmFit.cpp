@@ -13,7 +13,7 @@
 #include "cusolverDn.h"
 
 // Armadillo
-#include <armadillo>
+//#include <armadillo>
 
 // utils
 #include "tsv.h"

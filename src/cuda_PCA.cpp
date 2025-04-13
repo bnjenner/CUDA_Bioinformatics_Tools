@@ -13,7 +13,7 @@
 #include "cusolverDn.h"
 
 // Armadillo
-#include <armadillo>
+//#include <armadillo>
 
 // utils
 #include "tsv.h"
@@ -61,17 +61,18 @@ void argparse(int argc, char** argv, std::string &filename) {
 
 void cuda_assert(cudaError_t status) {
    if (status != cudaSuccess) {
-      std::cerr << "\n//CUDA_ERROR: "
+      std::cerr << "\n// CUDA_ERROR: "
                 << cudaGetErrorString(status) 
                 << ".\n";
    exit(EXIT_FAILURE);
    }
 }
 
+
 /////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
-	std::cerr << "//cuda_PCA\n";
+	std::cerr << "// cuda_PCA\n";
 
    // Arguments
    std::string filename;
@@ -80,11 +81,11 @@ int main(int argc, char* argv[]) {
 
    if (filename.empty()) {
       display_help(argv[0]);
-      std::cerr << "//ERROR: must include an input file.\n";
+      std::cerr << "// ERROR: must include an input file.\n";
       exit(EXIT_FAILURE);
    }
 
-   std::cerr << "//Parsing file.........................";
+   std::cerr << "// Parsing file..............................";
 
    /////////////////////////////////////////////////////////////////
    // Read in CSV
@@ -132,7 +133,7 @@ int main(int argc, char* argv[]) {
    cudaError_t cuda_error;
 
    // Allocate GPU memory for vectors
-   std::cerr << "//Allocating GPU memory................";  
+   std::cerr << "// Allocating GPU memory.....................";  
    cuda_error = cudaMalloc((void**)&d_norm, norm_vec_bytes); cuda_assert(cuda_error);   // Normalization vector
    cuda_error = cudaMalloc((void**)&d_one, one_vec_bytes); cuda_assert(cuda_error);     // One Vector 
    cuda_error = cudaMalloc((void**)&d_mat, bytes); cuda_assert(cuda_error);             // Data Matrix
@@ -142,16 +143,16 @@ int main(int argc, char* argv[]) {
    std::cerr << "COMPLETE\n";  
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Calculating Covariance Matrix........";  
+   std::cerr << "// Calculating Covariance Matrix.............";  
    // Set Matrix and vectors (I am treating vector as matrices, deal it)
    cublas_status = cublasSetMatrix(1, 1, bytes, mat, 1, d_mat, 1);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not set data matrix.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not set data matrix.\n");}
 
    cublas_status = cublasSetMatrix(1, 1, norm_vec_bytes, norm_vec, 1, d_norm, 1); 
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not set normalization vector.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not set normalization vector.\n");}
 
    cublas_status = cublasSetMatrix(1, 1, one_vec_bytes, one_vec, 1, d_one, 1);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not generate one vector.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not generate one vector.\n");}
 
    ///////////////////////////////////////////////////////////////// 
    // Normalized matrix 
@@ -163,7 +164,7 @@ int main(int argc, char* argv[]) {
                             	 &alpha, d_one, m,
                             	 d_norm, 1, &beta,
                            	 norm_d_mat, m);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not generate normalization matrix.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not generate normalization matrix.\n");}
 
    ///////////////////////////////////////////////////////////////// 
    // Normal-Center matrix
@@ -174,7 +175,7 @@ int main(int argc, char* argv[]) {
                                &alpha, d_mat, lda,
                                &beta, norm_d_mat, lda,
                                cent_d_mat, m);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not center matrix.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not center matrix.\n");}
 
    ///////////////////////////////////////////////////////////////// 
    // Get Coveriance matrix
@@ -185,7 +186,7 @@ int main(int argc, char* argv[]) {
                                &alpha, cent_d_mat, lda,
                                cent_d_mat, m, &beta,
                                cov_d_mat, n);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not calculate covariance matrix.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not calculate covariance matrix.\n");}
 
    // Scale Centered Matrix and Coveriance Matrix by sqrt(N)
    alpha = 1 / std::sqrt(cov_size);
@@ -211,49 +212,48 @@ int main(int argc, char* argv[]) {
    cusolverDnCreate(&cusolver_handle);
    cusolverStatus_t cusolver_status;
 
+   // vector for eigenvalues
+   std::vector<double> W(n, 0);
+
    // Create device pointers
    double *d_A = cov_d_mat;
-   double *d_S, *d_U, *d_VT, *d_work, *d_rwork;
-   double *d_pc, *d_t_mat;
-   int *devInfo = NULL;
-   int lwork = 0;
+   double *d_W, *d_t_mat;
+   int *devInfo;
 
    // Allocate memory on GPU
-   cuda_error = cudaMallocManaged((void**)&d_S, n * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMallocManaged((void**)&d_U, cov_size * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMallocManaged((void**)&d_VT, cov_size * sizeof(double)); cuda_assert(cuda_error); 
-   cuda_error = cudaMallocManaged((void**)&devInfo, sizeof(int)); cuda_assert(cuda_error); 
    cuda_error = cudaMallocManaged((void**)&d_t_mat, size * sizeof(double)); cuda_assert(cuda_error); 
-
+   cuda_error = cudaMalloc((void**)&d_W, sizeof(double) * n);
 
    ///////////////////////////////////////////////////////////////////////////////////
-   std::cerr << "//Performing SVD.......................";  
+   std::cerr << "// Performing Eigenvalue Decomposition.......";  
 
-   // Compute SVD on covariance matrix
-   cusolver_status = cusolverDnDgesvd_bufferSize(cusolver_handle, m, n, &lwork);
-   if (cusolver_status != CUSOLVER_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not create SVD buffer.\n");}
 
-   // Allocate memory for work size
-   cudaMalloc(&d_work , sizeof(double) * lwork);
+   // Create Buffer for Eigenvalues
+   int lwork = 0;
+   double* d_work;
+   // std::vector<double> h_W(n);
+   cusolver_status = cusolverDnDsyevd_bufferSize(cusolver_handle, 
+                                                 CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, 
+                                                 n, d_A, n, d_W, &lwork);
+   if (cusolver_status != CUSOLVER_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not create buffer for Eigenvalue Decomposition.\n");}
 
-   // Compute SVD
-   signed char jobu = 'A'; // all m columns of U
-   signed char jobvt = 'N'; // all n columns of VT
-   cusolver_status = cusolverDnDgesvd(cusolver_handle, jobu, jobvt,
-                                      n, n, d_A,
-                                      n, d_S, d_U,
-                                      n, d_VT, n,
-                                      d_work, lwork, d_rwork, devInfo);
-   if (cusolver_status != CUSOLVER_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not perform SVD.\n");}
+
+   cuda_error = cudaMalloc(&d_work , sizeof(double) * lwork); cuda_assert(cuda_error);
+   cuda_error = cudaMalloc((void**)&devInfo, sizeof(int)); cuda_assert(cuda_error); 
+
+
+   // Compute Eigenvalues
+   cusolver_status = cusolverDnDsyevd(cusolver_handle, 
+                                      CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+                                      n, d_A, n, d_W, 
+                                      d_work, lwork, devInfo);
+
+   if (cusolver_status != CUSOLVER_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Could not perform Eigenvalue Decomposition.\n");}
    std::cerr << "COMPLETE\n";  
 
-   /*
-   We should do this on the CPU using armadillo, it will be faster
-      SVD (with this algorithm) is not meant for the GPU. Common CUDA L?
-   */
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Transforming Data....................";  
+   std::cerr << "// Transforming Data.........................";  
 
    // Projecting Centered Data onto PCs
    alpha = 1.0f;
@@ -261,28 +261,28 @@ int main(int argc, char* argv[]) {
    cublas_status = cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
                                m, n, n, 
                                &alpha, cent_d_mat, lda,
-                               d_U, n, &beta,
+                               d_A, n, &beta,
                                d_t_mat, m);
-   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Projecting Centered Data onto PCs.\n");}
+   if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n// ERROR: Projecting Centered Data onto PCs.\n");}
    std::cerr << "COMPLETE\n";  
 
    ///////////////////////////////////////////////////////////////// 
    // Report results
-
    double *transformed = (double*)malloc(bytes);
    cudaMemcpy(transformed, d_t_mat, sizeof(double) * size, cudaMemcpyDeviceToHost);
+   sort_matrix_descending(transformed, n, m);
    output_matrix(transformed, m, n, table.col_names);
 
    //////////////////////////////////////////////////////////////////////////////////
    // Free up memory
    cudaDeviceSynchronize();
    cudaFree(d_A);
-   cudaFree(d_U);
-   cudaFree(d_S);
-   cudaFree(d_VT);
    cudaFree(cent_d_mat);
    cudaFree(d_t_mat);
+
+   cusolverDnDestroy(cusolver_handle);
+   cudaDeviceReset();
   
-   std::cerr << "//PROGRAM COMPLETED SUCCESSFULLY!\n";  
+   std::cerr << "// PROGRAM COMPLETED SUCCESSFULLY!\n";  
    return 0;
    }

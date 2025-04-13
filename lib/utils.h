@@ -1,7 +1,7 @@
 // Basic helper functions
-
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 double* get_one_vec(const int &size) {
     double *one_vec = (double*)malloc(size * sizeof(double));
@@ -23,6 +23,16 @@ double* get_norm_vec(double *mat, const int &rows, const int &cols) {
     }
 
     return norm_vec;
+}
+
+
+void sort_matrix_descending(double *mat,  const int &m, const int &n) {
+    // Reverse the columns (in-place)
+    for (int col = 0; col < m / 2; ++col) {
+        for (int row = 0; row < n; ++row) {
+            std::swap(mat[row + col * n], mat[row + (m - col - 1) * n]);
+        }
+    }
 }
 
 void print_matrix(double *mat, const int &rows, const int &cols) {
