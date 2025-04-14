@@ -5,7 +5,7 @@
 A collection of commandline tools for common bioinformatics analyses that utilizes GPU-computing.
 
 ### cuda_PCA
-Updated to use Eigenvalue Decomposition instead of Singular Value Decomposition.
+Updated to use Eigendecomposition instead of Singular Value Decomposition.
 
 ```
 Description: cuda_PCA is a tool used for Principal Component Analysis utilizing GPU 
