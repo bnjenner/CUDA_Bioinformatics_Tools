@@ -4,33 +4,26 @@
 */
 /////////////////////////////////////////////////////////////////
 
-// Cuda
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
 // cuBLAS and cuSolver
 #include "cublas_v2.h"
 #include "cusolverDn.h"
-
-// Armadillo
-//#include <armadillo>
 
 // utils
 #include "tsv.h"
 #include "utils.h"
 
-// SL
+// STL
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <stdexcept> 
-#include <cmath>
 #include <cassert>
 #include <getopt.h>
 
 /////////////////////////////////////////////////////////////////
 void display_help(const char* program) {
-   std::cerr << "Description: cuda_lmFit is a tool used for fitting linear models utilizing GPU\n             computing. Currently implements, the least squares (standard or weighted) \n             algorithm. Does not filter or perform normalization. \n             Uses formula Y = Xb. Results are printed to standard out.\n\n"
+   std::cerr << "Description: cuda_lmFit is a tool for fitting linear models utilizing GPU computing.\n"
+             << "             Currently implements the (standard or weighted) least squares \n"
+             << "             algorithm. Does not filter or perform normalization. \n"
+             << "             Future implementations will fit every gene in a table \n"
+             << "             Uses formula Y = Xb. Results are printed to standard out.\n\n"
              << "Usage: " << program << " [ OPTIONS ] Y_file X_file \n\n"
              << "Options:\n"
              << "  -h                Displays help message.\n"
@@ -67,20 +60,10 @@ void argparse(int argc, char** argv, std::string &y_filename, std::string &x_fil
 
 }
 
-void cuda_assert(cudaError_t status) {
-   if (status != cudaSuccess) {
-      std::cerr << "\n//CUDA_ERROR: "
-                << cudaGetErrorString(status) 
-                << ".\n";
-   exit(EXIT_FAILURE);
-   }
-}
-
 
 /////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
-	std::cerr << "//cuda_lm\n";
 
    std::string y_filename;
    std::string x_filename;
@@ -100,19 +83,19 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
    }
 
-   std::cerr << "//Parsing files....................";
+   std::cerr << "// cuda_lmFit\n";
 
    /////////////////////////////////////////////////////////////////
    // Read in X
+   std::cerr << "// Parsing files....................";
    TSV<double> table(x_filename);
    table.read_delim('\t');
-   double *mat = table.flatten('C'); // write transposed so end coords are for samples
+   double *mat = table.flatten(); // write transposed so end coords are for samples
 
    // Read in Y
    TSV<double> y_table(y_filename);
    y_table.read_delim('\t');
-   double *y_mat = y_table.flatten('C'); // write transposed so end coords are for samples
-
+   double *y_mat = y_table.flatten(); // write transposed so end coords are for samples
    std::cerr << "COMPLETE\n"; 
 
    // Get Dimensions and bytes
@@ -126,15 +109,6 @@ int main(int argc, char* argv[]) {
    const size_t weight_bytes = m * sizeof(double);
    const size_t y_bytes = y_m * y_n * sizeof(double);
 
-   // Print Table Stats (for debugging purposes)
-   // std::cerr << "    Rows: " << m << "\n"; 
-   // std::cerr << "    Cols: " << n << "\n";  
-   // std::cerr << "    Size: " << size << "\n"; 
-   // std::cerr << "    Bytes: " << bytes << "\n"; 
-   // std::cerr << "    Y Rows: " << y_m << "\n"; 
-   // std::cerr << "    Y Cols: " << y_n << "\n";  
-   // std::cerr << "    Y Size: " << y_m * y_n << "\n"; 
-   // std::cerr << "    Y Bytes: " << y_bytes << "\n"; 
 
    /////////////////////////////////////////////////////////////////
    // Create pointers to GPU
@@ -150,7 +124,7 @@ int main(int argc, char* argv[]) {
    if (!weights_file.empty()) {
       TSV<double> weights(weights_file);
       weights.read_delim('\t');
-      weight_vec = weights.flatten('C');
+      weight_vec = weights.flatten();
    
    } else {
       weight_vec = get_one_vec(m);
@@ -164,7 +138,7 @@ int main(int argc, char* argv[]) {
    cudaError_t cuda_error;
 
    // Allocate GPU memory for vectors
-   std::cerr << "//Allocating GPU memory............";   
+   std::cerr << "// Allocating GPU memory............";   
    cuda_error = cudaMalloc((void**)&d_mat, bytes); cuda_assert(cuda_error);                            // Data Matrix
    cuda_error = cudaMalloc((void**)&d_y_mat, y_bytes); cuda_assert(cuda_error);                        // Data Y Matrix
    cuda_error = cudaMalloc((void**)&d_w_mat, bytes); cuda_assert(cuda_error);                          // Weighted Data Matrix
@@ -176,8 +150,8 @@ int main(int argc, char* argv[]) {
    std::cerr << "COMPLETE\n";  
 
 
-   std::cerr << "//Setting Matrices.................";  
    // Set Matrix and vectors (I am treating vector as matrices, deal it)
+   std::cerr << "// Setting Matrices.................";  
    cublas_status = cublasSetMatrix(1, 1, bytes, mat, 1, d_mat, 1);
    if (cublas_status != CUBLAS_STATUS_SUCCESS) { throw std::runtime_error("\n//ERROR: Could not set data matrix.\n");}
 
@@ -190,7 +164,7 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Weighting Matrices...............";  
+   std::cerr << "// Weighting Matrices...............";  
 
    // Weight X matrix 
    cublas_status = cublasDdgmm(handle, CUBLAS_SIDE_LEFT,
@@ -209,7 +183,7 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Calculating X^t * X..............";  
+   std::cerr << "// Calculating X^t * X..............";  
 
    // Calculate "Identity" matrix 
    double alpha = 1.0f;
@@ -224,7 +198,7 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Calculating Inverse..............";  
+   std::cerr << "// Calculating Inverse..............";  
 
    // Set LU Decomposition Pointers
    double *d_inv, *d_work;
@@ -270,9 +244,8 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Calculating X^t * Y..............";  
-  
    // Transpose X matrix * Weighted Y
+   std::cerr << "// Calculating X^t * Y..............";    
    cublas_status = cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N,
                                n, y_n, m, 
                                &alpha, d_mat, m,
@@ -283,9 +256,8 @@ int main(int argc, char* argv[]) {
 
 
    ///////////////////////////////////////////////////////////////// 
-   std::cerr << "//Calculating Coefficients.........";  
-
    // Inverse * (Transpose X matrix * Weighted Y)
+   std::cerr << "// Calculating Coefficients.........";
    cublas_status = cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
                                n, y_m, n, 
                                &alpha, d_inv, n,
@@ -299,11 +271,7 @@ int main(int argc, char* argv[]) {
 
    double *result_matrix = (double*)malloc(n * y_m * sizeof(double));
    cudaMemcpy(result_matrix, d_res_mat, n * y_m * sizeof(double), cudaMemcpyDeviceToHost);
-   for (int i = 0; i < n; i++) {
-      std::cout << table.col_names.at(i) << "\t";
-   }
-   std::cout << "\n";
-   print_matrix(result_matrix, y_m, n);
+   output_fit(result_matrix, y_m, n, table.col_names);
 
 
    //////////////////////////////////////////////////////////////////////////////////

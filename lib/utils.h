@@ -1,41 +1,62 @@
 // Basic helper functions
-#include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <iostream>
+#include <vector>
 
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
+// CUDA Error Handling
+void cuda_assert(cudaError_t status) {
+   if (status != cudaSuccess) {
+      std::cerr << "\n// CUDA_ERROR: "
+                << cudaGetErrorString(status) 
+                << ".\n";
+   exit(EXIT_FAILURE);
+   }
+}
+
+// Create Vector of Ones
 double* get_one_vec(const int &size) {
     double *one_vec = (double*)malloc(size * sizeof(double));
     std::fill_n(one_vec, size, 1);
     return one_vec;
 }
 
-double* get_norm_vec(double *mat, const int &rows, const int &cols) {
+// Get Mean Matrix for Mean Centering
+double* get_norm_mat(double *mat, const int &rows, const int &cols) {
 
-    double *norm_vec = new double[cols];
     double tmp;
+    double *norm_vec = new double[rows];
+    double *norm_mat = new double[rows * cols];
 
-    for (int j = 0; j < cols; j++) {
+    // Calculate Col Means
+    for (int i = 0; i < rows; i++) {
         tmp = 0;
-        for (int k = 0; k < rows; k++) {
-            tmp += mat[j * rows + k];
+        for (int j = 0; j < cols; j++) {
+            tmp += mat[j * rows + i];
         }
-        norm_vec[j] = tmp / rows;
+        norm_vec[i] = tmp / cols;
     }
 
-    return norm_vec;
-}
-
-
-void sort_matrix_descending(double *mat,  const int &m, const int &n) {
-    // Reverse the columns (in-place)
-    for (int col = 0; col < m / 2; ++col) {
-        for (int row = 0; row < n; ++row) {
-            std::swap(mat[row + col * n], mat[row + (m - col - 1) * n]);
+    // Populate Norm Matrix
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            norm_mat[j * rows + i] = norm_vec[i];
         }
     }
+
+    return norm_mat;
 }
 
-void print_matrix(double *mat, const int &rows, const int &cols) {
+// Print lmFit Output (will generalize in future)
+void output_fit(double *mat, const int &rows, const int &cols, const std::vector<std::string> &names) {
+    // Print Header
+    for (int i = 0; i < cols; i++) { std::cout << names.at(i) << "\t"; }
+    std::cout << "\n";
+
+    // Print Data
     int tmp = 0;
     std::cout << std::setprecision(5);
     for (int i = 0; i < rows; i++) {
@@ -46,14 +67,14 @@ void print_matrix(double *mat, const int &rows, const int &cols) {
     }
 }
 
+// Print PCA Output (will generalize in future)
+void output_pca(double *mat, const int &rows, const int &cols, const std::vector<std::string> &rownames) {
+    // Print Header
+    for (int i = 1; i < cols + 1; i++) { std::cout << "PC" << i << "\t"; }
+    std::cout << "\n";
 
-void output_matrix(double *mat, const int &rows, const int &cols, const std::vector<std::string> &rownames) {
-     for (int i = 1; i < cols + 1; i++) {
-        std::cout << "PC" << i << "\t";
-     }
-     std::cout << "\n";
-
-     for (int i = 0; i < rows; i++) {
+    // Print Data
+    for (int i = 0; i < rows; i++) {
         std::cout << rownames.at(i) << "\t";
         std::cout << std::setprecision(5);
         for (int j = 0; j < cols; j++) {
@@ -61,5 +82,4 @@ void output_matrix(double *mat, const int &rows, const int &cols, const std::vec
         }
         std::cout << "\n";
     }
-
 }

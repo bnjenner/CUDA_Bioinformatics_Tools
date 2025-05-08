@@ -3,9 +3,8 @@
 
 #include <vector>
 #include <stdexcept>
-#include <iostream>
-#include <fstream>
 #include <sstream>
+#include <fstream>
 
 //////////////////////////////////////
 template <typename type>
@@ -45,29 +44,26 @@ public:
 
 	void read_delim(const char &del) {
 
+   		type val;
+		bool row = true;
+   		int col_index = 0;
+		std::string line, col;
 		std::fstream f(filename);
 
 		// Make sure the file is open
    		if(!f.is_open()) throw std::runtime_error("[ ERROR: Could not open file! ]");
 
-   		type val;
-		bool row = true;
-   		int col_index = 0;
-		std::string line, col;
-
 		// Read in column header
 		std::getline(f, line);
         std::stringstream s1(line);
-        while(std::getline(s1, col, del)){
-            col_names.push_back(col); 
-        }
+        while(std::getline(s1, col, del)){ col_names.push_back(col); }
 
+
+        // Read in data
         int num_cols = col_names.size() + 1;
-
         while (std::getline(f, line)) {
 
             std::stringstream s2(line);
-
 	        while (std::getline(s2, col, del)) {
 
 			  	if (col_index % num_cols == 0) {
@@ -85,7 +81,6 @@ public:
 		   	}
 			row = true;
 		}
-
 		f.close();
 
 		// Collect Stats
@@ -93,30 +88,34 @@ public:
 	    rows = row_names.size();
 	    size = cols * rows;
         bytes = size * sizeof(int);
-
 	}
 
-	// Flatten out table into matrix
-	type* flatten(const char &major_order) {
-
-	    type *mat = new type[size];
-
-		if (major_order == 'C') {	
-		    for (int i = 0; i < rows; i++) {
-		        for (int j = 0; j < cols; j++) {
-		            for (int k = 0; k < rows; k++) {
-		                mat[j * rows + k] = data.at(k).at(j);
-		            }  
-		        }
-		    }
-		} else {
-			for (int i = 0; i < rows; i++) {
-		        for (int j = 0; j < cols; j++) {
-		                mat[i * cols + j] = data.at(i).at(j);
-		        }
-		    }	
+	// Transpose Matrix
+	void transpose() {
+		
+		std::vector<std::vector<type>> transposed(cols, std::vector<type>(rows));
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				transposed[j][i] = data.at(i).at(j);
+			}
 		}
+		data = transposed;
 
+		// Swap dimensions
+		int tmp = rows;
+		rows = cols;
+		cols = tmp;
+	} 
+
+
+	// Flatten out table into matrix
+	type* flatten() {
+	    type *mat = new type[size];
+	    for (int c = 0; c < cols; c++) {
+	        for (int r = 0; r < rows; r++) {
+                mat[c * rows + r] = data.at(r).at(c);
+	        }
+	    }
 	    return mat;
 	}
 }; 
